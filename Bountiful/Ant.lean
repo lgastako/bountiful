@@ -234,7 +234,7 @@ def parseArgs (args : List String) : Config :=
         -- For backward compatibility, treat bare numbers as steps
         parseLoop rest { config with steps := s.toNat? }
 
-  parseLoop args { steps := none, width := none, height := none, delay := none }
+  parseLoop args { steps := none, width := none, height := none, delay := some 10 }
 
 def main (args : List String) : IO Unit := do
   -- Check for help flag
