@@ -16,3 +16,7 @@ scope = "leanprover-community"
 
 [[lean_lib]]
 name = "Bountiful"
+
+[[lean_exe]]
+name = "ant"
+root = "Bountiful.Ant"
