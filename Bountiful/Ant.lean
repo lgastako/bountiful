@@ -48,16 +48,17 @@ def step (w : World) : World :=
   let pos' := forward p dir'
   { grid := grid', ant := { pos := pos', dir := dir' } }
 
--- Initialize a world with ant at origin facing north
 def initWorld : World :=
-  { grid := Std.HashMap.emptyWithCapacity 100, ant := { pos := (0, 0), dir := .N } }
+  { grid := Std.HashMap.emptyWithCapacity 100
+  , ant := { pos := (0, 0)
+           , dir := .N
+           }
+  }
 
--- Run n steps of the simulation
 def runSteps (w : World) : Nat → World
   | 0 => w
   | n + 1 => runSteps (step w) n
 
--- Get bounds of the grid for display purposes
 def getBounds (g : Grid) : Option (Int × Int × Int × Int) :=
   if g.isEmpty then none
   else
@@ -74,22 +75,18 @@ def getBounds (g : Grid) : Option (Int × Int × Int × Int) :=
       let maxY := ys'.foldl max y
       some (minX, minY, maxX, maxY)
 
--- Convert direction to character for display
 def dirToChar : Dir → Char
   | .N => '^'
   | .E => '>'
   | .S => 'v'
   | .W => '<'
 
--- Count black cells in grid
 def countBlackCells (g : Grid) : Nat :=
   g.toList.filter (fun (_, cell) => cell = true) |>.length
 
--- Simple text representation of world state
 def worldInfo (w : World) : String :=
   s!"Ant at {w.ant.pos} facing {w.ant.dir}, Black cells: {countBlackCells w.grid}"
 
--- Build a single row of the grid
 def buildRow (w : World) (y : Int) (width : Nat) : String :=
   let halfW : Int := width / 2
   let rec buildChars (x : Int) (remaining : Nat) (acc : String) : String :=
@@ -106,7 +103,6 @@ def buildRow (w : World) (y : Int) (width : Nat) : String :=
       buildChars (x + 1) (remaining - 1) (acc ++ char.toString)
   buildChars (-halfW) width ""
 
--- Build the entire grid
 def buildGrid (w : World) (width height : Nat) : String :=
   let halfH : Int := height / 2
   let rec buildRows (y : Int) (remaining : Nat) (acc : String) : String :=
@@ -117,21 +113,18 @@ def buildGrid (w : World) (width height : Nat) : String :=
       buildRows (y + 1) (remaining - 1) newAcc
   buildRows (-halfH) height ""
 
--- Configurable grid display that actually uses the requested dimensions
 def renderGrid (w : World) (width height : Nat) : String :=
   -- Cap dimensions at reasonable values to prevent performance issues
-  let gridW := max 5 (min width 200)  -- Between 5 and 200 wide
+  let gridW := max 5 (min width 200)   -- Between 5 and 200 wide
   let gridH := max 5 (min height 60)   -- Between 5 and 60 tall
   buildGrid w gridW gridH
 
--- Clear screen ANSI escape sequence
 def clearScreen : String := "\x1b[2J\x1b[H"
 
--- Finite animation loop
 def animateFinite (w : World) (totalSteps : Nat) (width height : Nat) (currentStep : Nat) (delay : UInt32) : IO Unit := do
   IO.print clearScreen
   IO.println s!"🐜 Langton's Ant Simulation - Step {currentStep}/{totalSteps}"
-  IO.println "========================================"
+  IO.println "======================================================"
   IO.println (worldInfo w)
   IO.println ""
   IO.println (renderGrid w width height)
@@ -145,7 +138,6 @@ def animateFinite (w : World) (totalSteps : Nat) (width height : Nat) (currentSt
     animateFinite (step w) totalSteps width height (currentStep + 1) delay
   termination_by totalSteps - currentStep + 1
 
--- Infinite animation loop
 partial def animateInfinite (w : World) (width height : Nat) (currentStep : Nat) (delay : UInt32) : IO Unit := do
   IO.print clearScreen
   IO.println s!"🐜 Langton's Ant Simulation - Step {currentStep} (∞)"
@@ -158,7 +150,6 @@ partial def animateInfinite (w : World) (width height : Nat) (currentStep : Nat)
   IO.sleep delay
   animateInfinite (step w) width height (currentStep + 1) delay
 
--- Main animation dispatcher
 def animate (w : World) (totalSteps : Option Nat) (width height : Nat) (currentStep : Nat := 1) (delay : UInt32) : IO Unit := do
   match totalSteps with
   | some steps => animateFinite w steps width height currentStep delay
@@ -168,12 +159,8 @@ def printHelp : IO Unit := do
   IO.println "🐜 Langton's Ant Simulation"
   IO.println ""
   IO.println "USAGE:"
-  IO.println "    lake exe ant [STEPS] [OPTIONS]"
   IO.println "    lake exe ant [OPTIONS]"
   IO.println "    lake exe ant --help"
-  IO.println ""
-  IO.println "ARGUMENTS:"
-  IO.println "    STEPS           Number of simulation steps to run (backward compatibility)"
   IO.println ""
   IO.println "OPTIONS:"
   IO.println "    --help          Show this help message and exit"
@@ -201,7 +188,6 @@ def printHelp : IO Unit := do
   IO.println "EXAMPLES:"
   IO.println "    lake exe ant                        # Run forever, auto-size to terminal"
   IO.println "    lake exe ant --steps 20             # Run 20 steps, auto-size"
-  IO.println "    lake exe ant 100                    # Run 100 steps (backward compatibility)"
   IO.println "    lake exe ant --steps 50 --width 30  # 50 steps, custom width"
   IO.println "    lake exe ant --width 25 --height 15 # Run forever, custom dimensions"
 
@@ -227,25 +213,24 @@ def parseArgs (args : List String) : Config :=
       parseLoop rest { config with height := h.toNat? }
     | "--delay" :: d :: rest =>
       parseLoop rest { config with delay := d.toUInt32? }
-    | s :: rest =>
-      if s.startsWith "--" then
-        parseLoop rest config  -- Skip unknown flags
-      else
-        -- For backward compatibility, treat bare numbers as steps
-        parseLoop rest { config with steps := s.toNat? }
+    | _ :: rest =>
+      parseLoop rest config  -- Skip unknown flags
 
-  parseLoop args { steps := none, width := none, height := none, delay := some 10 }
+  parseLoop args {
+    steps := none,
+    width := none,
+    height := none,
+    delay := some 20
+  }
 
 def main (args : List String) : IO Unit := do
-  -- Check for help flag
   if args.contains "--help" then
     printHelp
     return
 
   let config := parseArgs args
 
-  -- Get terminal size and compute grid dimensions
-  let (termHeight, termWidth) ← getTerminalSize  -- Note: Term.getTerminalSize returns (rows, cols)
+  let (termHeight, termWidth) ← getTerminalSize
   let gridWidth := config.width.getD (max 5 (termWidth - 1))
   let gridHeight := config.height.getD (max 5 (termHeight - 6))  -- Leave space for header (4 lines) + margins (2 lines)
 
