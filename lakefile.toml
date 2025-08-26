@@ -20,3 +20,7 @@ name = "Bountiful"
 [[lean_exe]]
 name = "ant"
 root = "Bountiful.Ant"
+
+[[lean_exe]]
+name = "mandelbrot"
+root = "Mandelbrot"
